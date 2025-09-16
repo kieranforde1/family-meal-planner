@@ -572,8 +572,18 @@
             
             const content = `
                 <div class="card">
-                    <h2 style="margin-bottom: 16px;">This Week's Meals</h2>
-                    <p style="color: #6b7280; margin-bottom: 24px;">Choose 3 dinners for the week (${weeklyPicks.length}/3 selected)</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h2 style="margin: 0;">This Week's Meals</h2>
+                        ${weeklyPicks.length > 0 ? `
+                            <button class="btn" onclick="clearAllMeals()" style="background: #ef4444; font-size: 14px; padding: 8px 16px;">
+                                🗑️ Clear All
+                            </button>
+                        ` : ''}
+                    </div>
+                    <p style="color: #6b7280; margin-bottom: 24px;">
+                        Select as many meals as you want for the week 
+                        ${weeklyPicks.length > 0 ? `(${weeklyPicks.length} selected)` : ''}
+                    </p>
                     
                     ${selectedRecipes.length > 0 ? `
                         <div class="selected-meals">
@@ -586,6 +596,73 @@
                                             <div style="font-weight: 600;">${recipe.name}</div>
                                             <div style="font-size: 0.8rem; opacity: 0.8;">⏱️ ${recipe.cookingTime} min</div>
                                         </div>
+                    
+                    <div id="import-recipe-form" class="form-section hidden">
+                        <h3 style="margin-bottom: 16px;">📋 Import Recipe</h3>
+                        <p style="color: #6b7280; margin-bottom: 16px; font-size: 14px;">
+                            Paste any recipe (from websites, cookbooks, etc.) and it will be automatically parsed, 
+                            or paste JSON from an LLM tool.
+                        </p>
+                        
+                        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                            <button class="nav-btn" id="text-import-btn" onclick="switchImportMode('text')" style="font-size: 14px; padding: 8px 16px;">📝 Raw Text</button>
+                            <button class="nav-btn" id="json-import-btn" onclick="switchImportMode('json')" style="font-size: 14px; padding: 8px 16px;">🔧 JSON Format</button>
+                        </div>
+                        
+                        <div id="text-import-section">
+                            <div class="form-group">
+                                <label>Paste Recipe Text</label>
+                                <textarea id="import-text" class="form-control" rows="12" placeholder="Paste your recipe here...
+
+Example:
+Spaghetti Carbonara
+Serves 4, 20 minutes
+
+Ingredients:
+- 400g spaghetti
+- 200g bacon or pancetta
+- 3 large eggs
+- 100g parmesan cheese, grated
+- Black pepper
+- Salt
+
+Instructions:
+1. Cook spaghetti in salted boiling water
+2. Fry bacon until crispy
+3. Whisk eggs with cheese and pepper
+4. Drain pasta, mix with egg mixture
+5. Add bacon and serve immediately"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div id="json-import-section" class="hidden">
+                            <div class="form-group">
+                                <label>Paste JSON Recipe</label>
+                                <textarea id="import-json" class="form-control" rows="12" placeholder='Paste JSON recipe here...
+
+Example:
+{
+  "name": "Spaghetti Carbonara",
+  "cookingTime": 20,
+  "image": "🍝",
+  "ingredients": [
+    {"item": "Spaghetti", "amount": "400g", "category": "cupboard"},
+    {"item": "Bacon", "amount": "200g", "category": "meat"},
+    {"item": "Eggs", "amount": "3", "category": "dairy"}
+  ],
+  "instructions": [
+    "Cook spaghetti in salted boiling water",
+    "Fry bacon until crispy",
+    "Whisk eggs with cheese and pepper"
+  ]
+}'></textarea>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-green" onclick="importRecipe()">🔄 Import Recipe</button>
+                            <button class="btn" onclick="hideImportRecipeForm()" style="background: #6b7280;">Cancel</button>
+                        </div>
                                         <button class="text-link" onclick="showRecipeCard(${recipe.id})">View Recipe</button>
                                     </div>
                                 `).join('')}
@@ -599,7 +676,10 @@
                                 <div class="recipe-emoji">${recipe.image}</div>
                                 <div class="recipe-name">${recipe.name}</div>
                                 <div class="recipe-time">⏱️ ${recipe.cookingTime} min</div>
-                                ${weeklyPicks.includes(recipe.id) ? '<div style="color: #10b981; font-weight: 600; margin-top: 8px;">✓ Selected</div>' : ''}
+                                ${weeklyPicks.includes(recipe.id) ? 
+                                    '<div style="color: #10b981; font-weight: 600; margin-top: 8px; display: flex; align-items: center; gap: 4px;">✓ <span>Selected</span></div>' : 
+                                    '<div style="color: #6b7280; margin-top: 8px; font-size: 0.9rem;">Click to add</div>'
+                                }
                             </div>
                         `).join('')}
                     </div>
@@ -614,7 +694,10 @@
                 <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
                         <h2>Recipe Library</h2>
-                        <button class="btn" onclick="showAddRecipeForm()">➕ Add Recipe</button>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn" onclick="showAddRecipeForm()">➕ Add Recipe</button>
+                            <button class="btn" onclick="showImportRecipeForm()" style="background: #8b5cf6;">📋 Import Recipe</button>
+                        </div>
                     </div>
                     
                     <div id="add-recipe-form" class="form-section hidden">
@@ -712,14 +795,18 @@
                         </div>
                     ` : `
                         <div class="selected-meals">
-                            <h3>Selected Meals:</h3>
-                            <div class="meal-tags">
+                            <h3>Selected Meals (${selectedRecipes.length}):</h3>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 16px;">
                                 ${selectedRecipes.map(recipe => `
-                                    <div class="meal-tag">
-                                        <span style="font-size: 1.2rem;">${recipe.image}</span>
-                                        ${recipe.name}
+                                    <div class="meal-tag" style="justify-content: center; flex-direction: column; text-align: center; padding: 8px;">
+                                        <span style="font-size: 1.5rem; margin-bottom: 4px;">${recipe.image}</span>
+                                        <span style="font-size: 0.8rem; font-weight: 600;">${recipe.name}</span>
                                     </div>
                                 `).join('')}
+                            </div>
+                            <div style="font-size: 0.9rem; color: #6b7280; margin-bottom: 16px;">
+                                📊 Total cooking time: ${selectedRecipes.reduce((total, recipe) => total + recipe.cookingTime, 0)} minutes
+                                • Average per meal: ${Math.round(selectedRecipes.reduce((total, recipe) => total + recipe.cookingTime, 0) / selectedRecipes.length)} min
                             </div>
                         </div>
                         
@@ -805,11 +892,19 @@
         function toggleWeeklyPick(recipeId) {
             if (weeklyPicks.includes(recipeId)) {
                 weeklyPicks = weeklyPicks.filter(id => id !== recipeId);
-            } else if (weeklyPicks.length < 3) {
+            } else {
                 weeklyPicks.push(recipeId);
             }
             saveData();
             showPlanning();
+        }
+
+        function clearAllMeals() {
+            if (confirm('Clear all selected meals?')) {
+                weeklyPicks = [];
+                saveData();
+                showPlanning();
+            }
         }
 
         function showAddRecipeForm() {
@@ -818,7 +913,10 @@
 
         function hideAddRecipeForm() {
             document.getElementById('add-recipe-form').classList.add('hidden');
-            // Reset form
+            resetAddRecipeForm();
+        }
+        
+        function resetAddRecipeForm() {
             document.getElementById('recipe-name').value = '';
             document.getElementById('recipe-time').value = '';
             document.getElementById('recipe-emoji').value = '🍽️';
@@ -837,6 +935,277 @@
             // Reset instructions
             document.getElementById('instructions-container').innerHTML = 
                 '<textarea class="form-control instruction-step" placeholder="Step 1" rows="2" style="margin-bottom: 8px;"></textarea>';
+        }
+
+        function showImportRecipeForm() {
+            document.getElementById('import-recipe-form').classList.remove('hidden');
+            switchImportMode('text');
+        }
+
+        function hideImportRecipeForm() {
+            document.getElementById('import-recipe-form').classList.add('hidden');
+            document.getElementById('import-text').value = '';
+            document.getElementById('import-json').value = '';
+        }
+
+        function switchImportMode(mode) {
+            const textBtn = document.getElementById('text-import-btn');
+            const jsonBtn = document.getElementById('json-import-btn');
+            const textSection = document.getElementById('text-import-section');
+            const jsonSection = document.getElementById('json-import-section');
+            
+            if (mode === 'text') {
+                textBtn.classList.add('active');
+                jsonBtn.classList.remove('active');
+                textSection.classList.remove('hidden');
+                jsonSection.classList.add('hidden');
+            } else {
+                textBtn.classList.remove('active');
+                jsonBtn.classList.add('active');
+                textSection.classList.add('hidden');
+                jsonSection.classList.remove('hidden');
+            }
+        }
+
+        function parseRecipeText(text) {
+            const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+            
+            let recipe = {
+                name: '',
+                cookingTime: 30,
+                image: '🍽️',
+                ingredients: [],
+                instructions: []
+            };
+            
+            // Try to find recipe name (usually first non-empty line)
+            if (lines.length > 0) {
+                recipe.name = lines[0].replace(/^\d+\.\s*/, '').trim();
+            }
+            
+            // Try to extract cooking time
+            const timeRegex = /(\d+)\s*(?:min|minute|minutes)/i;
+            for (let line of lines.slice(0, 5)) { // Check first few lines
+                const match = line.match(timeRegex);
+                if (match) {
+                    recipe.cookingTime = parseInt(match[1]);
+                    break;
+                }
+            }
+            
+            // Find ingredients section
+            let inIngredients = false;
+            let inInstructions = false;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].toLowerCase();
+                const originalLine = lines[i];
+                
+                if (line.includes('ingredient')) {
+                    inIngredients = true;
+                    inInstructions = false;
+                    continue;
+                }
+                
+                if (line.includes('instruction') || line.includes('method') || line.includes('direction')) {
+                    inIngredients = false;
+                    inInstructions = true;
+                    continue;
+                }
+                
+                if (inIngredients) {
+                    const ingredient = parseIngredientLine(originalLine);
+                    if (ingredient) {
+                        recipe.ingredients.push(ingredient);
+                    }
+                } else if (inInstructions) {
+                    const instruction = parseInstructionLine(originalLine);
+                    if (instruction) {
+                        recipe.instructions.push(instruction);
+                    }
+                }
+            }
+            
+            // If no clear sections found, try to parse the whole text
+            if (recipe.ingredients.length === 0) {
+                for (let line of lines) {
+                    if (line.match(/^[-•*]\s+/) || line.match(/^\d+(?:\.|:)?\s+\w/)) {
+                        const ingredient = parseIngredientLine(line);
+                        if (ingredient) {
+                            recipe.ingredients.push(ingredient);
+                        }
+                    }
+                }
+            }
+            
+            if (recipe.instructions.length === 0) {
+                for (let line of lines) {
+                    if (line.match(/^\d+\.\s+/) && line.length > 10) {
+                        const instruction = parseInstructionLine(line);
+                        if (instruction) {
+                            recipe.instructions.push(instruction);
+                        }
+                    }
+                }
+            }
+            
+            // Guess emoji based on recipe name
+            recipe.image = guessRecipeEmoji(recipe.name);
+            
+            return recipe;
+        }
+
+        function parseIngredientLine(line) {
+            // Remove bullet points and numbers
+            const cleaned = line.replace(/^[-•*\d+\.\)\s]+/, '').trim();
+            if (cleaned.length < 3) return null;
+            
+            // Try to extract amount and ingredient
+            const match = cleaned.match(/^([\d\s\/\.\-]+(?:cups?|tbsp|tsp|g|kg|ml|l|oz|lbs?|pounds?|cloves?|pieces?|slices?|medium|large|small)?)?\s*(.+)/i);
+            
+            if (match) {
+                const amount = match[1] ? match[1].trim() : '1';
+                const item = match[2].trim();
+                const category = guessIngredientCategory(item);
+                
+                return { item, amount, category };
+            }
+            
+            return { item: cleaned, amount: '1', category: 'cupboard' };
+        }
+
+        function parseInstructionLine(line) {
+            const cleaned = line.replace(/^\d+[\.\)\s]+/, '').trim();
+            return cleaned.length > 5 ? cleaned : null;
+        }
+
+        function guessIngredientCategory(ingredient) {
+            const item = ingredient.toLowerCase();
+            
+            if (item.includes('chicken') || item.includes('beef') || item.includes('pork') || 
+                item.includes('salmon') || item.includes('fish') || item.includes('bacon') ||
+                item.includes('meat') || item.includes('sausage') || item.includes('lamb')) {
+                return 'meat';
+            }
+            
+            if (item.includes('milk') || item.includes('cheese') || item.includes('cream') || 
+                item.includes('butter') || item.includes('yogurt') || item.includes('egg')) {
+                return 'dairy';
+            }
+            
+            if (item.includes('onion') || item.includes('garlic') || item.includes('tomato') || 
+                item.includes('pepper') || item.includes('carrot') || item.includes('potato') ||
+                item.includes('lettuce') || item.includes('spinach') || item.includes('broccoli') ||
+                item.includes('mushroom') || item.includes('apple') || item.includes('lemon') ||
+                item.includes('vegetable') || item.includes('fruit')) {
+                return 'fruit & veg';
+            }
+            
+            if (item.includes('bread') || item.includes('tortilla') || item.includes('bun') || 
+                item.includes('roll') || item.includes('bagel')) {
+                return 'bread';
+            }
+            
+            if (item.includes('frozen') || item.includes('ice cream')) {
+                return 'freezer';
+            }
+            
+            return 'cupboard';
+        }
+
+        function guessRecipeEmoji(name) {
+            const n = name.toLowerCase();
+            
+            if (n.includes('pasta') || n.includes('spaghetti') || n.includes('noodle')) return '🍝';
+            if (n.includes('pizza')) return '🍕';
+            if (n.includes('burger') || n.includes('sandwich')) return '🍔';
+            if (n.includes('taco') || n.includes('burrito')) return '🌮';
+            if (n.includes('curry')) return '🍛';
+            if (n.includes('soup')) return '🍲';
+            if (n.includes('salad')) return '🥗';
+            if (n.includes('chicken')) return '🍗';
+            if (n.includes('fish') || n.includes('salmon')) return '🐟';
+            if (n.includes('rice')) return '🍚';
+            if (n.includes('stir fry')) return '🥢';
+            if (n.includes('pancake')) return '🥞';
+            if (n.includes('cake') || n.includes('dessert')) return '🍰';
+            
+            return '🍽️';
+        }
+
+        function importRecipe() {
+            const textSection = document.getElementById('text-import-section');
+            const isTextMode = !textSection.classList.contains('hidden');
+            
+            let recipe;
+            
+            try {
+                if (isTextMode) {
+                    // Parse raw text
+                    const text = document.getElementById('import-text').value.trim();
+                    if (!text) {
+                        alert('Please paste a recipe to import');
+                        return;
+                    }
+                    
+                    recipe = parseRecipeText(text);
+                    
+                    if (!recipe.name) {
+                        alert('Could not find recipe name. Please check the format.');
+                        return;
+                    }
+                    
+                    if (recipe.ingredients.length === 0) {
+                        alert('Could not find ingredients. Please make sure they are listed clearly.');
+                        return;
+                    }
+                    
+                } else {
+                    // Parse JSON
+                    const jsonText = document.getElementById('import-json').value.trim();
+                    if (!jsonText) {
+                        alert('Please paste JSON recipe data');
+                        return;
+                    }
+                    
+                    const data = JSON.parse(jsonText);
+                    
+                    // Validate required fields
+                    if (!data.name || !data.ingredients || !data.instructions) {
+                        alert('JSON must include name, ingredients, and instructions');
+                        return;
+                    }
+                    
+                    recipe = {
+                        name: data.name,
+                        cookingTime: data.cookingTime || data.time || 30,
+                        image: data.image || data.emoji || '🍽️',
+                        ingredients: data.ingredients.map(ing => ({
+                            item: ing.item || ing.ingredient || ing.name,
+                            amount: ing.amount || ing.quantity || '1',
+                            category: ing.category || 'cupboard'
+                        })),
+                        instructions: Array.isArray(data.instructions) ? data.instructions : [data.instructions]
+                    };
+                }
+                
+                // Add unique ID
+                recipe.id = Date.now();
+                
+                // Add to recipes
+                recipes.push(recipe);
+                saveData();
+                
+                // Close form and refresh view
+                hideImportRecipeForm();
+                showRecipes();
+                
+                alert(`Successfully imported "${recipe.name}"!`);
+                
+            } catch (error) {
+                console.error('Import error:', error);
+                alert('Error importing recipe. Please check the format and try again.');
+            }
         }
 
         function addIngredientRow() {
