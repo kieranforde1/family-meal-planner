@@ -49,6 +49,16 @@
             font-size: 14px;
         }
         
+        .sync-status {
+            background-color: #dbeafe;
+            color: #1e40af;
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+        
         .nav {
             display: flex;
             justify-content: center;
@@ -152,6 +162,11 @@
         
         .btn:hover {
             background: #2563eb;
+        }
+        
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
         }
         
         .btn-green {
@@ -384,6 +399,21 @@
             font-style: italic;
         }
         
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f4f6;
+            border-radius: 50%;
+            border-top-color: #3b82f6;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -418,9 +448,12 @@
     <div class="container">
         <header class="header">
             <h1>🍽️ Family Meal Planner</h1>
-            <p>Plan three delicious dinners each week</p>
+            <p>Plan meals and sync across all your devices</p>
             <div class="success-message">
-                ✓ Your data is automatically saved in your browser!
+                🔄 Cross-device sync enabled! Your recipes are shared across all devices.
+            </div>
+            <div id="sync-status" class="sync-status">
+                <span id="sync-indicator">🔄 Checking for updates...</span>
             </div>
         </header>
 
@@ -443,10 +476,14 @@
         let recipes = [];
         let weeklyPicks = [];
         let pantryItems = ['Salt', 'Pepper', 'Cooking oil'];
+        let syncEnabled = true;
+        let lastSyncTime = null;
         
         const categories = ['fruit & veg', 'meat', 'dairy', 'cupboard', 'bread', 'freezer'];
+        const GITHUB_REPO = 'kieranforde1/family-meal-planner';
+        const RECIPES_FILE_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/family-recipes.json`;
         
-        // Sample recipes
+        // Sample recipes (fallback)
         const initialRecipes = [
             {
                 id: 1,
@@ -494,46 +531,93 @@
                     "Cook salmon skin-side down for 4 minutes, then flip for 3 minutes",
                     "Serve salmon over rice with steamed broccoli"
                 ]
-            },
-            {
-                id: 3,
-                name: "Vegetable Stir Fry",
-                cookingTime: 20,
-                image: "🥢",
-                ingredients: [
-                    { item: "Mixed vegetables", amount: "500g", category: "fruit & veg" },
-                    { item: "Noodles", amount: "400g", category: "cupboard" },
-                    { item: "Soy sauce", amount: "3 tbsp", category: "cupboard" },
-                    { item: "Sesame oil", amount: "1 tbsp", category: "cupboard" },
-                    { item: "Ginger", amount: "2cm piece", category: "fruit & veg" },
-                    { item: "Spring onions", amount: "4", category: "fruit & veg" }
-                ],
-                instructions: [
-                    "Cook noodles according to package instructions",
-                    "Heat sesame oil in wok or large pan",
-                    "Add grated ginger and stir for 30 seconds",
-                    "Add vegetables and stir-fry for 5-7 minutes",
-                    "Add cooked noodles and soy sauce",
-                    "Toss everything together and garnish with spring onions"
-                ]
             }
         ];
 
-        // Load data from localStorage
-        function loadData() {
-            recipes = JSON.parse(localStorage.getItem('familyMealPlanner-recipes')) || initialRecipes;
-            weeklyPicks = JSON.parse(localStorage.getItem('familyMealPlanner-weeklyPicks')) || [];
-            pantryItems = JSON.parse(localStorage.getItem('familyMealPlanner-pantryItems')) || ['Salt', 'Pepper', 'Cooking oil'];
+        // Cross-device sync functions
+        async function loadSharedRecipes() {
+            updateSyncStatus('🔄 Loading shared recipes...', 'loading');
+            
+            try {
+                const response = await fetch(RECIPES_FILE_URL + '?t=' + Date.now());
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.recipes && Array.isArray(data.recipes)) {
+                        recipes = data.recipes;
+                        if (data.sharedPantryItems) {
+                            pantryItems = [...new Set([...pantryItems, ...data.sharedPantryItems])];
+                        }
+                        lastSyncTime = new Date().toISOString();
+                        updateSyncStatus('✅ Synced with family recipes', 'success');
+                        
+                        // Also save locally as backup
+                        saveDataLocally();
+                        return true;
+                    }
+                }
+            } catch (error) {
+                console.log('Could not load shared recipes, using local data:', error);
+            }
+            
+            // Fallback to local storage
+            loadDataLocally();
+            updateSyncStatus('📱 Using local recipes (offline mode)', 'offline');
+            return false;
         }
 
-        // Save data to localStorage
-        function saveData() {
+        function loadDataLocally() {
+            const savedRecipes = localStorage.getItem('familyMealPlanner-recipes');
+            const savedWeeklyPicks = localStorage.getItem('familyMealPlanner-weeklyPicks');
+            const savedPantryItems = localStorage.getItem('familyMealPlanner-pantryItems');
+            
+            recipes = savedRecipes ? JSON.parse(savedRecipes) : initialRecipes;
+            weeklyPicks = savedWeeklyPicks ? JSON.parse(savedWeeklyPicks) : [];
+            pantryItems = savedPantryItems ? JSON.parse(savedPantryItems) : ['Salt', 'Pepper', 'Cooking oil'];
+        }
+
+        function saveDataLocally() {
             localStorage.setItem('familyMealPlanner-recipes', JSON.stringify(recipes));
             localStorage.setItem('familyMealPlanner-weeklyPicks', JSON.stringify(weeklyPicks));
             localStorage.setItem('familyMealPlanner-pantryItems', JSON.stringify(pantryItems));
         }
 
-        // Generate shopping list
+        function updateSyncStatus(message, type = 'info') {
+            const indicator = document.getElementById('sync-indicator');
+            if (indicator) {
+                indicator.innerHTML = message;
+            }
+            
+            const statusEl = document.getElementById('sync-status');
+            if (statusEl) {
+                statusEl.className = 'sync-status';
+                if (type === 'loading') statusEl.style.backgroundColor = '#fef3c7';
+                else if (type === 'success') statusEl.style.backgroundColor = '#d1fae5';
+                else if (type === 'offline') statusEl.style.backgroundColor = '#fee2e2';
+            }
+        }
+
+        function generateSharedRecipeFile() {
+            const sharedData = {
+                version: "1.0",
+                lastUpdated: new Date().toISOString().split('T')[0],
+                recipes: recipes,
+                sharedPantryItems: pantryItems
+            };
+            
+            const dataStr = JSON.stringify(sharedData, null, 2);
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(dataStr).then(() => {
+                alert(`Shared recipe file generated!\n\nThis data has been copied to your clipboard.\n\nTo enable cross-device sync:\n1. Go to your GitHub repo\n2. Create/update "family-recipes.json"\n3. Paste this content\n4. Commit the changes\n\nAll devices will then sync automatically!`);
+            }).catch(() => {
+                // Fallback - show in popup
+                const popup = window.open('', '_blank', 'width=600,height=400');
+                popup.document.write('<h3>Copy this to create family-recipes.json in your GitHub repo:</h3><pre>' + dataStr + '</pre>');
+            });
+        }
+
+        // Generate shopping list from weekly picks
         function generateShoppingList() {
             const consolidatedIngredients = {};
             
@@ -587,15 +671,109 @@
                     
                     ${selectedRecipes.length > 0 ? `
                         <div class="selected-meals">
-                            <h3>Selected Meals:</h3>
-                            <div class="meal-tags">
+                            <h3>Selected Meals (${selectedRecipes.length}):</h3>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
                                 ${selectedRecipes.map(recipe => `
-                                    <div class="meal-tag">
-                                        <span style="font-size: 1.2rem; margin-right: 8px;">${recipe.image}</span>
-                                        <div>
-                                            <div style="font-weight: 600;">${recipe.name}</div>
-                                            <div style="font-size: 0.8rem; opacity: 0.8;">⏱️ ${recipe.cookingTime} min</div>
-                                        </div>
+                                    <div style="background: #dbeafe; color: #1e40af; padding: 8px 16px; border-radius: 20px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; border: 1px solid #3b82f6;">
+                                        <span style="font-size: 1.1rem;">${recipe.image}</span>
+                                        <span style="font-weight: 600;">${recipe.name}</span>
+                                        <span style="opacity: 0.7; font-size: 0.8rem;">⏱️ ${recipe.cookingTime}min</span>
+                                        <button onclick="toggleWeeklyPick(${recipe.id}); event.stopPropagation();" style="background: #ef4444; color: white; border: none; width: 18px; height: 18px; border-radius: 50%; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; margin-left: 4px;">×</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div style="font-size: 0.9rem; color: #6b7280; margin-bottom: 24px;">
+                                📊 Total cooking time: ${selectedRecipes.reduce((total, recipe) => total + recipe.cookingTime, 0)} minutes
+                                • Average per meal: ${Math.round(selectedRecipes.reduce((total, recipe) => total + recipe.cookingTime, 0) / selectedRecipes.length)} min
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="recipe-grid">
+                        ${recipes.map(recipe => `
+                            <div class="recipe-card ${weeklyPicks.includes(recipe.id) ? 'selected' : ''}" onclick="toggleWeeklyPick(${recipe.id})">
+                                <div class="recipe-emoji">${recipe.image}</div>
+                                <div class="recipe-name">${recipe.name}</div>
+                                <div class="recipe-time">⏱️ ${recipe.cookingTime} min</div>
+                                ${weeklyPicks.includes(recipe.id) ? 
+                                    '<div style="color: #10b981; font-weight: 600; margin-top: 8px; display: flex; align-items: center; gap: 4px;">✓ <span>Selected</span></div>' : 
+                                    '<div style="color: #6b7280; margin-top: 8px; font-size: 0.9rem;">Click to add</div>'
+                                }
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('content').innerHTML = content;
+        }
+
+        function showRecipes() {
+            const content = `
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+                        <h2>Recipe Library</h2>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn" onclick="showAddRecipeForm()">➕ Add Recipe</button>
+                            <button class="btn" onclick="showImportRecipeForm()" style="background: #8b5cf6;">📋 Import Recipe</button>
+                            <button class="btn" onclick="generateSharedRecipeFile()" style="background: #059669;">🔄 Generate Sync File</button>
+                        </div>
+                    </div>
+                    
+                    <div id="add-recipe-form" class="form-section hidden">
+                        <h3 style="margin-bottom: 16px;">Add New Recipe</h3>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Recipe Name</label>
+                                <input type="text" id="recipe-name" class="form-control" placeholder="e.g. Chicken Curry">
+                            </div>
+                            <div class="form-group">
+                                <label>Cooking Time (minutes)</label>
+                                <input type="number" id="recipe-time" class="form-control" placeholder="30">
+                            </div>
+                            <div class="form-group">
+                                <label>Emoji</label>
+                                <input type="text" id="recipe-emoji" class="form-control" placeholder="🍛" value="🍽️">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Ingredients</label>
+                            <div id="ingredients-container">
+                                <div class="ingredient-row">
+                                    <div>
+                                        <input type="text" class="form-control ingredient-name" placeholder="Ingredient name">
+                                    </div>
+                                    <div>
+                                        <input type="text" class="form-control ingredient-amount" placeholder="Amount">
+                                    </div>
+                                    <div>
+                                        <select class="form-control ingredient-category">
+                                            ${categories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <button type="button" class="btn-red" onclick="removeIngredientRow(this)">✕</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="text-link" onclick="addIngredientRow()">+ Add ingredient</button>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Instructions</label>
+                            <div id="instructions-container">
+                                <textarea class="form-control instruction-step" placeholder="Step 1" rows="2" style="margin-bottom: 8px;"></textarea>
+                            </div>
+                            <button type="button" class="text-link" onclick="addInstructionRow()">+ Add step</button>
+                        </div>
+                        
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-green" onclick="saveRecipe()">Save Recipe</button>
+                            <button class="btn" onclick="hideAddRecipeForm()" style="background: #6b7280;">Cancel</button>
+                        </div>
+                    </div>
                     
                     <div id="import-recipe-form" class="form-section hidden">
                         <h3 style="margin-bottom: 16px;">📋 Import Recipe</h3>
@@ -605,7 +783,7 @@
                         </p>
                         
                         <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-                            <button class="nav-btn" id="text-import-btn" onclick="switchImportMode('text')" style="font-size: 14px; padding: 8px 16px;">📝 Raw Text</button>
+                            <button class="nav-btn active" id="text-import-btn" onclick="switchImportMode('text')" style="font-size: 14px; padding: 8px 16px;">📝 Raw Text</button>
                             <button class="nav-btn" id="json-import-btn" onclick="switchImportMode('json')" style="font-size: 14px; padding: 8px 16px;">🔧 JSON Format</button>
                         </div>
                         
@@ -662,96 +840,6 @@ Example:
                         <div style="display: flex; gap: 8px;">
                             <button class="btn btn-green" onclick="importRecipe()">🔄 Import Recipe</button>
                             <button class="btn" onclick="hideImportRecipeForm()" style="background: #6b7280;">Cancel</button>
-                        </div>
-                                        <button class="text-link" onclick="showRecipeCard(${recipe.id})">View Recipe</button>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
-                    
-                    <div class="recipe-grid">
-                        ${recipes.map(recipe => `
-                            <div class="recipe-card ${weeklyPicks.includes(recipe.id) ? 'selected' : ''}" onclick="toggleWeeklyPick(${recipe.id})">
-                                <div class="recipe-emoji">${recipe.image}</div>
-                                <div class="recipe-name">${recipe.name}</div>
-                                <div class="recipe-time">⏱️ ${recipe.cookingTime} min</div>
-                                ${weeklyPicks.includes(recipe.id) ? 
-                                    '<div style="color: #10b981; font-weight: 600; margin-top: 8px; display: flex; align-items: center; gap: 4px;">✓ <span>Selected</span></div>' : 
-                                    '<div style="color: #6b7280; margin-top: 8px; font-size: 0.9rem;">Click to add</div>'
-                                }
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('content').innerHTML = content;
-        }
-
-        function showRecipes() {
-            const content = `
-                <div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                        <h2>Recipe Library</h2>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn" onclick="showAddRecipeForm()">➕ Add Recipe</button>
-                            <button class="btn" onclick="showImportRecipeForm()" style="background: #8b5cf6;">📋 Import Recipe</button>
-                        </div>
-                    </div>
-                    
-                    <div id="add-recipe-form" class="form-section hidden">
-                        <h3 style="margin-bottom: 16px;">Add New Recipe</h3>
-                        
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label>Recipe Name</label>
-                                <input type="text" id="recipe-name" class="form-control" placeholder="e.g. Chicken Curry">
-                            </div>
-                            <div class="form-group">
-                                <label>Cooking Time (minutes)</label>
-                                <input type="number" id="recipe-time" class="form-control" placeholder="30">
-                            </div>
-                            <div class="form-group">
-                                <label>Emoji</label>
-                                <input type="text" id="recipe-emoji" class="form-control" placeholder="🍛" value="🍽️">
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Ingredients</label>
-                            <div id="ingredients-container">
-                                <div class="ingredient-row">
-                                    <div>
-                                        <input type="text" class="form-control ingredient-name" placeholder="Ingredient name">
-                                    </div>
-                                    <div>
-                                        <input type="text" class="form-control ingredient-amount" placeholder="Amount">
-                                    </div>
-                                    <div>
-                                        <select class="form-control ingredient-category">
-                                            ${categories.map(cat => `<option value="${cat}">${cat}</option>`).join('')}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <button type="button" class="btn-red" onclick="removeIngredientRow(this)">✕</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <button type="button" class="text-link" onclick="addIngredientRow()">+ Add ingredient</button>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Instructions</label>
-                            <div id="instructions-container">
-                                <textarea class="form-control instruction-step" placeholder="Step 1" rows="2" style="margin-bottom: 8px;"></textarea>
-                            </div>
-                            <button type="button" class="text-link" onclick="addInstructionRow()">+ Add step</button>
-                        </div>
-                        
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn btn-green" onclick="saveRecipe()">Save Recipe</button>
-                            <button class="btn" onclick="hideAddRecipeForm()" style="background: #6b7280;">Cancel</button>
                         </div>
                     </div>
                     
@@ -895,14 +983,14 @@ Example:
             } else {
                 weeklyPicks.push(recipeId);
             }
-            saveData();
+            saveDataLocally();
             showPlanning();
         }
 
         function clearAllMeals() {
             if (confirm('Clear all selected meals?')) {
                 weeklyPicks = [];
-                saveData();
+                saveDataLocally();
                 showPlanning();
             }
         }
@@ -1194,7 +1282,7 @@ Example:
                 
                 // Add to recipes
                 recipes.push(recipe);
-                saveData();
+                saveDataLocally();
                 
                 // Close form and refresh view
                 hideImportRecipeForm();
@@ -1285,7 +1373,7 @@ Example:
             };
             
             recipes.push(newRecipe);
-            saveData();
+            saveDataLocally();
             hideAddRecipeForm();
             showRecipes();
         }
@@ -1294,7 +1382,7 @@ Example:
             if (confirm('Are you sure you want to delete this recipe?')) {
                 recipes = recipes.filter(r => r.id !== recipeId);
                 weeklyPicks = weeklyPicks.filter(id => id !== recipeId);
-                saveData();
+                saveDataLocally();
                 showRecipes();
             }
         }
@@ -1304,7 +1392,7 @@ Example:
             if (value && !pantryItems.includes(value)) {
                 pantryItems.push(value);
                 input.value = '';
-                saveData();
+                saveDataLocally();
                 showShopping();
             }
         }
@@ -1353,8 +1441,9 @@ Example:
         }
 
         // Initialize app
-        document.addEventListener('DOMContentLoaded', () => {
-            loadData();
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Load shared recipes first, fallback to local
+            await loadSharedRecipes();
             
             // Setup navigation
             document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -1365,6 +1454,13 @@ Example:
             
             // Show initial view
             showPlanning();
+            
+            // Check for updates periodically
+            setInterval(async () => {
+                if (syncEnabled) {
+                    await loadSharedRecipes();
+                }
+            }, 30000); // Check every 30 seconds
         });
     </script>
 </body>
