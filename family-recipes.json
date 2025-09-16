@@ -1,0 +1,60 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2025-01-16",
+  "recipes": [
+    {
+      "id": 1,
+      "name": "Chicken Fajitas",
+      "cookingTime": 25,
+      "image": "🌮",
+      "ingredients": [
+        {"item": "Chicken breast", "amount": "500g", "category": "meat"},
+        {"item": "Bell peppers", "amount": "3", "category": "fruit & veg"},
+        {"item": "Onions", "amount": "2", "category": "fruit & veg"},
+        {"item": "Tortillas", "amount": "8", "category": "bread"},
+        {"item": "Sour cream", "amount": "1 pot", "category": "dairy"},
+        {"item": "Cheddar cheese", "amount": "200g", "category": "dairy"},
+        {"item": "Olive oil", "amount": "2 tbsp", "category": "cupboard"},
+        {"item": "Paprika", "amount": "1 tsp", "category": "cupboard"},
+        {"item": "Cumin", "amount": "1 tsp", "category": "cupboard"}
+      ],
+      "instructions": [
+        "Slice chicken breast into strips and season with paprika and cumin",
+        "Heat oil in large pan over medium-high heat",
+        "Cook chicken strips for 6-8 minutes until golden",
+        "Add sliced peppers and onions, cook for 5-7 minutes",
+        "Warm tortillas in dry pan or microwave",
+        "Serve chicken and veg with tortillas, cheese, and sour cream"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Salmon with Rice",
+      "cookingTime": 30,
+      "image": "🍚",
+      "ingredients": [
+        {"item": "Salmon fillets", "amount": "4", "category": "meat"},
+        {"item": "Basmati rice", "amount": "300g", "category": "cupboard"},
+        {"item": "Broccoli", "amount": "1 head", "category": "fruit & veg"},
+        {"item": "Lemon", "amount": "1", "category": "fruit & veg"},
+        {"item": "Butter", "amount": "50g", "category": "dairy"},
+        {"item": "Garlic", "amount": "3 cloves", "category": "fruit & veg"}
+      ],
+      "instructions": [
+        "Start cooking rice according to package instructions",
+        "Steam broccoli for 5-6 minutes until tender",
+        "Season salmon with salt, pepper, and lemon juice",
+        "Heat butter in pan, add minced garlic",
+        "Cook salmon skin-side down for 4 minutes, then flip for 3 minutes",
+        "Serve salmon over rice with steamed broccoli"
+      ]
+    }
+  ],
+  "sharedPantryItems": [
+    "Salt",
+    "Pepper", 
+    "Olive oil",
+    "Garlic powder",
+    "Onion powder"
+  ]
+}
