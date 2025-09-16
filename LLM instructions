@@ -1,0 +1,211 @@
+# 🤖 LLM Recipe Generation Schema
+
+Use this guide with **any LLM** (ChatGPT, Claude, Gemini, etc.) to generate recipes that can be directly imported into your Family Meal Planner app.
+
+## 📋 **Quick Instructions for Any LLM:**
+
+Copy and paste this prompt into any AI tool:
+
+```
+Please create a recipe in this exact JSON format:
+
+{
+  "name": "Recipe Name Here",
+  "cookingTime": 30,
+  "image": "🍝",
+  "ingredients": [
+    {"item": "Ingredient Name", "amount": "Quantity", "category": "category"},
+    {"item": "Another Ingredient", "amount": "Amount", "category": "category"}
+  ],
+  "instructions": [
+    "First step of cooking",
+    "Second step of cooking",
+    "Third step, etc."
+  ]
+}
+
+Categories must be exactly one of these: "fruit & veg", "meat", "dairy", "cupboard", "bread", "freezer"
+
+Create a recipe for: [YOUR RECIPE REQUEST HERE]
+```
+
+## 📊 **Detailed Schema:**
+
+### **Required Fields:**
+```json
+{
+  "name": "string (recipe name)",
+  "cookingTime": "number (minutes)",
+  "image": "string (single emoji)",
+  "ingredients": "array of ingredient objects",
+  "instructions": "array of instruction strings"
+}
+```
+
+### **Ingredient Object Schema:**
+```json
+{
+  "item": "string (ingredient name, no amounts)",
+  "amount": "string (quantity with units)",
+  "category": "string (must match exact categories)"
+}
+```
+
+### **Valid Categories:**
+- `"fruit & veg"` - Fresh produce, herbs, fruits
+- `"meat"` - All proteins (chicken, beef, fish, etc.)
+- `"dairy"` - Milk, cheese, eggs, butter, cream
+- `"cupboard"` - Dry goods, spices, sauces, oils
+- `"bread"` - Bread, tortillas, buns, pastry
+- `"freezer"` - Frozen items, ice cream
+
+## 🎯 **Example Recipes:**
+
+### Simple Example:
+```json
+{
+  "name": "Spaghetti Carbonara",
+  "cookingTime": 20,
+  "image": "🍝",
+  "ingredients": [
+    {"item": "Spaghetti", "amount": "400g", "category": "cupboard"},
+    {"item": "Bacon", "amount": "200g", "category": "meat"},
+    {"item": "Eggs", "amount": "3 large", "category": "dairy"},
+    {"item": "Parmesan cheese", "amount": "100g", "category": "dairy"},
+    {"item": "Black pepper", "amount": "to taste", "category": "cupboard"}
+  ],
+  "instructions": [
+    "Cook spaghetti in salted boiling water according to package directions",
+    "Meanwhile, fry bacon in large pan until crispy",
+    "Whisk eggs with grated parmesan and plenty of black pepper",
+    "Drain pasta, reserving 1 cup pasta water",
+    "Add hot pasta to pan with bacon, toss to combine",
+    "Remove from heat, add egg mixture, toss quickly with pasta water as needed",
+    "Serve immediately with extra parmesan and pepper"
+  ]
+}
+```
+
+### Complex Example:
+```json
+{
+  "name": "Thai Green Curry",
+  "cookingTime": 35,
+  "image": "🍛",
+  "ingredients": [
+    {"item": "Chicken thighs", "amount": "500g", "category": "meat"},
+    {"item": "Coconut milk", "amount": "400ml can", "category": "cupboard"},
+    {"item": "Green curry paste", "amount": "3 tbsp", "category": "cupboard"},
+    {"item": "Thai basil", "amount": "1 bunch", "category": "fruit & veg"},
+    {"item": "Baby aubergines", "amount": "200g", "category": "fruit & veg"},
+    {"item": "Green beans", "amount": "150g", "category": "fruit & veg"},
+    {"item": "Red chilli", "amount": "1 large", "category": "fruit & veg"},
+    {"item": "Fish sauce", "amount": "2 tbsp", "category": "cupboard"},
+    {"item": "Palm sugar", "amount": "1 tbsp", "category": "cupboard"},
+    {"item": "Jasmine rice", "amount": "300g", "category": "cupboard"}
+  ],
+  "instructions": [
+    "Start cooking jasmine rice according to package instructions",
+    "Cut chicken into bite-sized pieces",
+    "Quarter the aubergines and slice green beans",
+    "Heat thick coconut cream in wok over medium-high heat",
+    "Add curry paste and fry for 2-3 minutes until fragrant",
+    "Add chicken pieces and cook until almost done",
+    "Add remaining coconut milk, aubergines, and green beans",
+    "Simmer for 10-12 minutes until vegetables are tender",
+    "Season with fish sauce and palm sugar to taste",
+    "Stir in Thai basil and sliced chilli",
+    "Serve immediately over jasmine rice"
+  ]
+}
+```
+
+## 🔄 **How to Use:**
+
+### **Method 1: Generate Single Recipe**
+1. **Ask any LLM**: "Create a recipe for [dish name] using the JSON schema above"
+2. **Copy the JSON response**
+3. **Go to your meal planner** → Recipe Library → Import Recipe → JSON Format
+4. **Paste and import**
+
+### **Method 2: Batch Generate**
+Ask for multiple recipes at once:
+```
+Create 5 different pasta recipes using the JSON schema above. 
+Put each recipe as a separate JSON object.
+```
+
+### **Method 3: Convert Existing Recipes**
+```
+Convert this recipe to the JSON schema format:
+
+[paste your recipe here]
+```
+
+## 📱 **Mobile Workflow:**
+1. **Find a recipe** on your phone (website, app, photo)
+2. **Open ChatGPT/Claude** on mobile
+3. **Paste the schema** + your recipe request
+4. **Copy the JSON response**
+5. **Open your meal planner** → Import → paste JSON
+
+## 🎨 **Emoji Suggestions:**
+- 🍝 Pasta dishes
+- 🍕 Pizza
+- 🌮 Mexican food
+- 🍛 Curries, rice bowls
+- 🍲 Soups, stews
+- 🥗 Salads
+- 🍗 Chicken dishes
+- 🐟 Fish/seafood
+- 🥢 Asian stir-fries
+- 🥞 Breakfast items
+- 🍰 Desserts
+- 🍽️ General/default
+
+## ✅ **Validation Checklist:**
+
+Before importing, check your JSON has:
+- [ ] Valid recipe name
+- [ ] Cooking time as number (not string)
+- [ ] Single emoji character
+- [ ] At least 3 ingredients
+- [ ] All categories match exactly
+- [ ] At least 3 instruction steps
+- [ ] Proper JSON formatting (no trailing commas)
+
+## 🚨 **Common Mistakes:**
+
+❌ **Wrong category names:**
+```json
+{"category": "vegetables"} // Wrong
+{"category": "fruit & veg"} // Correct
+```
+
+❌ **Cooking time as string:**
+```json
+{"cookingTime": "30 minutes"} // Wrong
+{"cookingTime": 30} // Correct
+```
+
+❌ **Multiple emojis:**
+```json
+{"image": "🍝🧄"} // Wrong
+{"image": "🍝"} // Correct
+```
+
+❌ **Amounts in ingredient names:**
+```json
+{"item": "2 cups flour"} // Wrong
+{"item": "Flour", "amount": "2 cups"} // Correct
+```
+
+## 🔧 **Pro Tips:**
+
+- **Be specific with amounts**: "2 tbsp" not "some"
+- **Use clear ingredient names**: "Chicken breast" not "chicken"
+- **Keep instructions actionable**: Start with verbs (Cook, Add, Mix)
+- **Include prep in cooking time**: Total time from start to eating
+- **Choose relevant emojis**: Helps with visual recognition
+
+Your Family Meal Planner will automatically handle the rest! 🚀
